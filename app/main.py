@@ -1,7 +1,5 @@
 import asyncio
 import logging
-import threading
-import queue
 
 from fastapi import FastAPI
 from fastapi.responses import RedirectResponse
@@ -15,7 +13,7 @@ from core.database_manager import DatabaseManager
 from api.dashboard import Dashboard
 from core.event_manager import EventManager
 from core.websocket_manager import WebSocketManager
-from core.cycle_task import CycleTask
+from core.cycle_manager import CycleManager
 from plugins.plugin_manager import PluginManager
 
 
@@ -49,7 +47,7 @@ database_manager = DatabaseManager()
 
 websocket_manager = WebSocketManager()
 
-event_queue = queue.Queue()
+event_queue: asyncio.Queue = asyncio.Queue()
 
 dashboard = Dashboard(websocket_manager, database_manager, templates)
 
@@ -62,21 +60,22 @@ plugin_manager.load()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
 
-    logger.info("Start cycle & event manager threads ...")
-    stop_event: threading.Event = threading.Event()
-    cycle_task = CycleTask(stop_event, event_queue)
+    logger.info("Start cycle manager & event manager task ...")
+    stop_event = asyncio.Event()
+    cycle_manager = CycleManager(stop_event, event_queue, interval=60)
     event_manager = EventManager(stop_event, event_queue, websocket_manager, database_manager, plugin_manager)
-    cycle_task.start()
-    event_manager.start()
-    logger.info("Threads started")
+    cycle_task = asyncio.create_task(cycle_manager.run())
+    event_task = asyncio.create_task(event_manager.run())
+
+    logger.info("Tasks started")
     try:
         yield
     finally:
-        logger.info("Stopping threads...")
+        logger.info("Stopping tasks...")
         stop_event.set()
-        cycle_task.join()
-        event_manager.join()
-        logger.info("Threads stopped")
+        await cycle_task
+        await event_task
+        logger.info("Tasks stopped")
         tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
         print("Noch laufende Tasks:", tasks)
 

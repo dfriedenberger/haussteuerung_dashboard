@@ -10,5 +10,5 @@ class Plugin(ABC):
         self._manager = manager
 
     @abstractmethod
-    def trigger(self, event_type: EventType, payload: dict):
+    async def trigger(self, event_type: EventType, payload: dict):
         raise NotImplementedError("Trigger method must be implemented by subclasses")

@@ -12,7 +12,7 @@ class Simulator(Plugin):
 
     _simulated_value = 22.1
 
-    def trigger(self, event_type: EventType, payload: dict):
+    async def trigger(self, event_type: EventType, payload: dict):
         logger.info(f"Simulator plugin triggered with {event_type} and payload: {payload}")
 
         if event_type == EventType.CYCLE:
@@ -24,7 +24,7 @@ class Simulator(Plugin):
                 "ref_id": None,
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
-            self._manager.put_event(EventType.LOG, log_payload)
+            await self._manager.put_event(EventType.LOG, log_payload)
 
             # Simulate a value entry event
             value_payload = {
@@ -34,7 +34,7 @@ class Simulator(Plugin):
                 "unit": "°C",
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
-            self._manager.put_event(EventType.VALUE, value_payload)
+            await self._manager.put_event(EventType.VALUE, value_payload)
 
             # Update simulated value for next cycle
             self._simulated_value += 0.1
