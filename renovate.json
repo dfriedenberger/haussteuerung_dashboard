@@ -1,0 +1,10 @@
+{
+  "extends": ["config:base"],
+  "automerge": true,
+  "packageRules": [
+    {
+      "matchPackageNames": ["fastapi", "sqlalchemy", "psycopg2-binary", "jinja2", "alembic"],
+      "enabled": true
+    }
+  ]
+}

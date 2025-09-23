@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Protokoll - Haussteuerung</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        .protocol-entry {
+            transition: background-color 0.3s ease;
+        }
+        .protocol-entry:nth-child(odd) {
+            background-color: #f8f9fa;
+        }
+        .protocol-entry:nth-child(even) {
+            background-color: #ffffff;
+        }
+        .protocol-entry:hover {
+            background-color: #e9ecef;
+        }
+        .badge-level {
+            min-width: 60px;
+        }
+        .timestamp {
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        .loading-spinner {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard">Dashboard</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/dashboard">Übersicht</a>
+                <a class="nav-link active" href="/protocol">Protokoll</a>
+                <a class="nav-link" href="/test">Simulator</a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container mt-4">
+        <div class="row">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2>Protokoll</h2>
+                    <div>
+                        <button class="btn btn-outline-primary btn-sm" id="refreshBtn">
+                            <i class="bi bi-arrow-clockwise"></i> Aktualisieren
+                        </button>
+                        <button class="btn btn-outline-secondary btn-sm" id="pauseBtn">
+                            <i class="bi bi-pause"></i> Pausieren
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <span>Protokolleinträge</span>
+                        <div class="loading-spinner">
+                            <div class="spinner-border spinner-border-sm" role="status">
+                                <span class="visually-hidden">Laden...</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="protocol-list">
+                            <!-- Protokolleinträge werden hier eingefügt -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Handlebars Template -->
+    <script id="protocol-entry-template" type="text/x-handlebars-template">
+        {% raw %}
+        {{#each entries}}
+        <div class="protocol-entry p-3 border-bottom" data-entry-id="{{id}}">
+            <div class="row align-items-center">
+                <div class="col-md-2">
+                    <span class="timestamp text-muted">{{formatTimestamp timestamp}}</span>
+                </div>
+                <div class="col-md-1">
+                    <span class="badge badge-level {{getLevelClass level}}">{{level}}</span>
+                </div>
+                <div class="col-md-2">
+                    <span class="badge bg-secondary">{{protocol}}</span>
+                </div>
+                <div class="col-md-5">
+                    <span class="message">{{message}}</span>
+                </div>
+                <div class="col-md-2">
+                    {{#if ref_id}}
+                    <span class="text-muted small">{{ref_id}}</span>
+                    {{/if}}
+                </div>
+            </div>
+        </div>
+        {{/each}}
+        {% endraw %}
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
+    <script>
+        $(document).ready(function() {
+            let ws = null;
+            let reconnectInterval = null;
+            let isPaused = false;
+            let maxEntries = 100; // Maximal anzuzeigende Einträge
+            
+            // Kompiliere Handlebars Template
+            const source = $('#protocol-entry-template').html();
+            const template = Handlebars.compile(source);
+            
+            // Handlebars Helpers
+            Handlebars.registerHelper('formatTimestamp', function(timestamp) {
+                if (!timestamp) return '';
+                const date = new Date(timestamp);
+                return date.toLocaleString('de-DE');
+            });
+            
+            Handlebars.registerHelper('getLevelClass', function(level) {
+                switch(level) {
+                    case 'ERROR': return 'bg-danger';
+                    case 'WARNING': return 'bg-warning';
+                    case 'INFO': return 'bg-info';
+                    case 'DEBUG': return 'bg-secondary';
+                    default: return 'bg-primary';
+                }
+            });
+            
+            // WebSocket-Verbindung erstellen
+            function connectWebSocket() {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsUrl = `${protocol}//${window.location.host}/protocol/ws`;
+                
+                ws = new WebSocket(wsUrl);
+                
+                ws.onopen = function(event) {
+                    console.log('Protocol WebSocket connected');
+                    $('.loading-spinner').hide();
+                    updateConnectionStatus(true);
+                    
+                    // Clear reconnect interval if it exists
+                    if (reconnectInterval) {
+                        clearInterval(reconnectInterval);
+                        reconnectInterval = null;
+                    }
+                };
+                
+                ws.onmessage = function(event) {
+                    if (isPaused) return;
+                    
+                    const message = JSON.parse(event.data);
+                    
+                    if (message.type === 'initial_data') {
+                        // Initial data received - populate the list
+                        const html = template({entries: message.data.entries});
+                        $('#protocol-list').html(html);
+                        updateAlternatingColors();
+                    } else if (message.type === 'new_entry') {
+                        // New entry received - prepend to the list
+                        const html = template({entries: [message.data]});
+                        $('#protocol-list').prepend(html);
+                        
+                        // Highlight new entry briefly
+                        const newEntry = $('#protocol-list .protocol-entry:first');
+                        newEntry.addClass('bg-success text-white');
+                        setTimeout(() => {
+                            newEntry.removeClass('bg-success text-white');
+                            updateAlternatingColors();
+                        }, 2000);
+                        
+                        // Limit number of entries
+                        const entries = $('#protocol-list .protocol-entry');
+                        if (entries.length > maxEntries) {
+                            entries.slice(maxEntries).remove();
+                        }
+                        
+                        updateAlternatingColors();
+                    }
+                };
+                
+                ws.onclose = function(event) {
+                    console.log('Protocol WebSocket disconnected');
+                    updateConnectionStatus(false);
+                    
+                    // Attempt to reconnect every 5 seconds
+                    if (!reconnectInterval) {
+                        reconnectInterval = setInterval(() => {
+                            console.log('Attempting to reconnect...');
+                            connectWebSocket();
+                        }, 5000);
+                    }
+                };
+                
+                ws.onerror = function(error) {
+                    console.error('Protocol WebSocket error:', error);
+                    updateConnectionStatus(false);
+                };
+            }
+            
+            // Connection status indicator
+            function updateConnectionStatus(connected) {
+                const statusIndicator = $('#connection-status');
+                if (statusIndicator.length === 0) {
+                    $('.card-header span').after(
+                        '<span id="connection-status" class="badge ms-2"></span>'
+                    );
+                }
+                
+                if (connected) {
+                    $('#connection-status')
+                        .removeClass('bg-danger')
+                        .addClass('bg-success')
+                        .text('Verbunden');
+                } else {
+                    $('#connection-status')
+                        .removeClass('bg-success')
+                        .addClass('bg-danger')
+                        .text('Verbindung getrennt');
+                }
+            }
+            
+            // Alternierende Farben aktualisieren
+            function updateAlternatingColors() {
+                $('#protocol-list .protocol-entry').each(function(index) {
+                    $(this).removeClass('bg-light');
+                    if (index % 2 === 0) {
+                        $(this).addClass('bg-light');
+                    }
+                });
+            }
+            
+            // Event Handlers
+            $('#refreshBtn').click(function() {
+                // Reconnect WebSocket to get fresh data
+                if (ws) {
+                    ws.close();
+                }
+                connectWebSocket();
+            });
+            
+            $('#pauseBtn').click(function() {
+                isPaused = !isPaused;
+                const btn = $(this);
+                
+                if (isPaused) {
+                    btn.html('<i class="bi bi-play"></i> Fortsetzen');
+                    btn.removeClass('btn-outline-secondary').addClass('btn-outline-success');
+                } else {
+                    btn.html('<i class="bi bi-pause"></i> Pausieren');
+                    btn.removeClass('btn-outline-success').addClass('btn-outline-secondary');
+                }
+            });
+            
+            // Start WebSocket connection
+            $('.loading-spinner').show();
+            connectWebSocket();
+            
+            // Cleanup on page unload
+            $(window).on('beforeunload', function() {
+                if (ws) {
+                    ws.close();
+                }
+                if (reconnectInterval) {
+                    clearInterval(reconnectInterval);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="1" author="init">
+        <createTable tableName="values">
+            <column name="id" type="VARCHAR(255)">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="value_type" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timestamp" type="TIMESTAMP">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="value" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="unit" type="VARCHAR(50)">
+                <constraints nullable="true"/>
+            </column>
+        </createTable>
+
+        <createTable tableName="events">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="topic" type="VARCHAR(255)"/>
+            <column name="payload" type="JSON"/>
+            <column name="timestamp" type="TIMESTAMP"/>
+        </createTable>
+        <createTable tableName="logs">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="timestamp" type="TIMESTAMP"/>
+            <column name="message" type="VARCHAR(255)"/>
+            <column name="protocol" type="VARCHAR(255)"/>
+            <column name="level" type="VARCHAR(255)"/>
+            <column name="ref_id" type="VARCHAR(255)"/>
+        </createTable>
+        <createTable tableName="alarms">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="timestamp" type="TIMESTAMP"/>
+            <column name="message" type="VARCHAR(500)"/>
+            <column name="alarm_type" type="VARCHAR(100)"/>
+            <column name="device_id" type="VARCHAR(255)"/>
+            <column name="priority" type="INTEGER" defaultValue="0"/>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="2" author="init">
+        <comment>Insert sample data for values table</comment>
+        <insert tableName="values">
+            <column name="id" value="steckdose_01"/>
+            <column name="value_type" value="state"/>
+            <column name="timestamp" value="2025-09-19 10:00:00"/>
+            <column name="value" value="on"/>
+        </insert>
+        <insert tableName="values">
+            <column name="id" value="steckdose_01"/>
+            <column name="value_type" value="state"/>
+            <column name="timestamp" value="2025-09-19 10:00:01"/>
+            <column name="value" value="off"/>
+        </insert>
+        <insert tableName="values">
+            <column name="id" value="sensor_temp_01"/>
+            <column name="value_type" value="temperature"/>
+            <column name="timestamp" value="2025-09-19 10:00:02"/>
+            <column name="value" value="22.5"/>
+            <column name="unit" value="°C"/>
+        </insert>
+        <insert tableName="values">
+            <column name="id" value="sensor_temp_01"/>
+            <column name="value_type" value="temperature"/>
+            <column name="timestamp" value="2025-09-19 10:00:03"/>
+            <column name="value" value="23"/>
+            <column name="unit" value="°C"/>
+        </insert>
+       
+    </changeSet>
+
+    <changeSet id="3" author="init">
+        <comment>Insert sample data for logs table</comment>
+        <insert tableName="logs">
+            <column name="timestamp" valueDate="now()"/>
+            <column name="message" value="System gestartet"/>
+            <column name="protocol" value="SYSTEM"/>
+            <column name="level" value="INFO"/>
+            <column name="ref_id" value="system_startup"/>
+        </insert>
+        <insert tableName="logs">
+            <column name="timestamp" valueDate="now()"/>
+            <column name="message" value="Steckdose Wohnzimmer eingeschaltet"/>
+            <column name="protocol" value="DEVICE_CONTROL"/>
+            <column name="level" value="INFO"/>
+            <column name="ref_id" value="steckdose_01"/>
+        </insert>
+        <insert tableName="logs">
+            <column name="timestamp" valueDate="now()"/>
+            <column name="message" value="Temperatur Sensor Wohnzimmer Wert aktualisiert"/>
+            <column name="protocol" value="SENSOR_UPDATE"/>
+            <column name="level" value="DEBUG"/>
+            <column name="ref_id" value="sensor_temp_01"/>
+        </insert>
+        <insert tableName="logs">
+            <column name="timestamp" valueDate="now()"/>
+            <column name="message" value="Plugin 'Smart Home Controller' geladen"/>
+            <column name="protocol" value="PLUGIN"/>
+            <column name="level" value="INFO"/>
+            <column name="ref_id" value="plugin_smart_home"/>
+        </insert>
+        <insert tableName="logs">
+            <column name="timestamp" valueDate="now()"/>
+            <column name="message" value="Küche Steckdose ausgeschaltet"/>
+            <column name="protocol" value="DEVICE_CONTROL"/>
+            <column name="level" value="INFO"/>
+            <column name="ref_id" value="steckdose_02"/>
+        </insert>
+        <insert tableName="logs">
+            <column name="timestamp" valueDate="now()"/>
+            <column name="message" value="Wohnzimmer Licht Helligkeit auf 80% gesetzt"/>
+            <column name="protocol" value="DEVICE_CONTROL"/>
+            <column name="level" value="INFO"/>
+            <column name="ref_id" value="licht_01"/>
+        </insert>
+        <insert tableName="logs">
+            <column name="timestamp" valueDate="now()"/>
+            <column name="message" value="Temperatur Sensor Küche Wert aktualisiert"/>
+            <column name="protocol" value="SENSOR_UPDATE"/>
+            <column name="level" value="DEBUG"/>
+            <column name="ref_id" value="sensor_temp_02"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="4" author="init">
+        <comment>Insert sample data for events table</comment>
+        <insert tableName="events">
+            <column name="topic" value="device/steckdose_01/status"/>
+            <column name="payload" value='{"device_id": "steckdose_01", "action": "turn_on", "timestamp": "2025-09-19T09:00:00Z", "user": "system"}'/>
+            <column name="timestamp" valueDate="now()"/>
+        </insert>
+        <insert tableName="events">
+            <column name="topic" value="sensor/temperature/update"/>
+            <column name="payload" value='{"sensor_id": "sensor_temp_01", "temperature": 22.5, "humidity": 45, "location": "wohnzimmer"}'/>
+            <column name="timestamp" valueDate="now()"/>
+        </insert>
+        <insert tableName="events">
+            <column name="topic" value="device/licht_01/brightness"/>
+            <column name="payload" value='{"device_id": "licht_01", "action": "set_brightness", "value": 80, "previous_value": 60}'/>
+            <column name="timestamp" valueDate="now()"/>
+        </insert>
+        <insert tableName="events">
+            <column name="topic" value="system/plugin/loaded"/>
+            <column name="payload" value='{"plugin_name": "Smart Home Controller", "version": "1.0.0", "status": "active"}'/>
+            <column name="timestamp" valueDate="now()"/>
+        </insert>
+    </changeSet>
+
+    <changeSet id="5" author="init">
+        <comment>Insert sample data for alarms table</comment>
+        <insert tableName="alarms">
+            <column name="status" value="an"/>
+            <column name="timestamp" value="2025-09-19 11:00:00"/>
+            <column name="message" value="Temperatur zu hoch im Wohnzimmer"/>
+            <column name="alarm_type" value="TEMPERATURE_HIGH"/>
+            <column name="device_id" value="sensor_temp_01"/>
+            <column name="priority" value="2"/>
+        </insert>
+        <insert tableName="alarms">
+            <column name="status" value="quittiert"/>
+            <column name="timestamp" value="2025-09-19 11:05:00"/>
+            <column name="message" value="Steckdose nicht erreichbar"/>
+            <column name="alarm_type" value="DEVICE_OFFLINE"/>
+            <column name="device_id" value="steckdose_02"/>
+            <column name="priority" value="1"/>
+        </insert>
+        <insert tableName="alarms">
+            <column name="status" value="aus"/>
+            <column name="timestamp" value="2025-09-19 11:10:00"/>
+            <column name="message" value="Bewegung erkannt"/>
+            <column name="alarm_type" value="MOTION_DETECTED"/>
+            <column name="device_id" value="sensor_motion_01"/>
+            <column name="priority" value="0"/>
+        </insert>
+        <insert tableName="alarms">
+            <column name="status" value="an"/>
+            <column name="timestamp" value="2025-09-19 11:15:00"/>
+            <column name="message" value="Kritischer Energieverbrauch überschritten"/>
+            <column name="alarm_type" value="POWER_CRITICAL"/>
+            <column name="device_id" value="steckdose_01"/>
+            <column name="priority" value="3"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

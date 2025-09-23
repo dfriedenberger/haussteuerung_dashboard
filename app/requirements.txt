@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+jinja2
+sqlalchemy
+psycopg2-binary
+alembic
+liquibase
+python-dotenv
+pydantic
+bootstrap4
+websockets
