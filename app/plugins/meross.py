@@ -9,6 +9,6 @@ logger = logging.getLogger(__name__)
 
 class Meross(Plugin):
 
-    def trigger(self, event_type: EventType, payload: dict):
+    async def trigger(self, event_type: EventType, payload: dict):
         logger.info(f"Meross plugin triggered with {event_type} and payload: {payload}")
 

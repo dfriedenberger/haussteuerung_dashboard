@@ -46,8 +46,14 @@ class EventManager:
 
             elif event == EventType.VALUE:
                 new_value = Value.from_dict(payload)
+                logger.info(f"Storing new value: {new_value.to_json()}")
                 with self.database_manager.session_scope() as db:
-                    db.add(new_value)
+                    exists = db.query(Value).filter_by(id=new_value.id, timestamp=new_value.timestamp).first()
+                    if exists:
+                        logger.info(f"Value with id {new_value.id} and timestamp {new_value.timestamp} already exists. Skip insert")
+                    else:
+                        db.add(new_value)
+              
                 with self.database_manager.session_scope() as db:
                     latest_values = get_current_values(db)
                     update_data = [value_entry.to_json() for value_entry in latest_values]

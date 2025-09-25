@@ -35,6 +35,8 @@ class Simulator(Plugin):
                 "timestamp": datetime.now(timezone.utc).isoformat()
             }
             await self._manager.put_event(EventType.VALUE, value_payload)
+            
+            await self._manager.put_event(EventType.VALUE, value_payload)
 
             # Update simulated value for next cycle
             self._simulated_value += 0.1
