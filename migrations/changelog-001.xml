@@ -168,7 +168,7 @@
     <changeSet id="5" author="init">
         <comment>Insert sample data for alarms table</comment>
         <insert tableName="alarms">
-            <column name="status" value="an"/>
+            <column name="status" value="AN"/>
             <column name="timestamp" value="2025-09-19 11:00:00"/>
             <column name="message" value="Temperatur zu hoch im Wohnzimmer"/>
             <column name="alarm_type" value="TEMPERATURE_HIGH"/>
@@ -176,7 +176,7 @@
             <column name="priority" value="2"/>
         </insert>
         <insert tableName="alarms">
-            <column name="status" value="quittiert"/>
+            <column name="status" value="QUITTIERT"/>
             <column name="timestamp" value="2025-09-19 11:05:00"/>
             <column name="message" value="Steckdose nicht erreichbar"/>
             <column name="alarm_type" value="DEVICE_OFFLINE"/>
@@ -184,7 +184,7 @@
             <column name="priority" value="1"/>
         </insert>
         <insert tableName="alarms">
-            <column name="status" value="aus"/>
+            <column name="status" value="AUS"/>
             <column name="timestamp" value="2025-09-19 11:10:00"/>
             <column name="message" value="Bewegung erkannt"/>
             <column name="alarm_type" value="MOTION_DETECTED"/>
@@ -192,7 +192,7 @@
             <column name="priority" value="0"/>
         </insert>
         <insert tableName="alarms">
-            <column name="status" value="an"/>
+            <column name="status" value="AN"/>
             <column name="timestamp" value="2025-09-19 11:15:00"/>
             <column name="message" value="Kritischer Energieverbrauch überschritten"/>
             <column name="alarm_type" value="POWER_CRITICAL"/>

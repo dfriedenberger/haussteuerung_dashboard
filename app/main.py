@@ -9,6 +9,7 @@ from contextlib import asynccontextmanager
 from fastapi.templating import Jinja2Templates
 
 from api.protocol import Protocol
+from api.alarm import AlarmApi
 from core.database_manager import DatabaseManager
 from api.dashboard import Dashboard
 from core.event_manager import EventManager
@@ -53,6 +54,8 @@ dashboard = Dashboard(websocket_manager, database_manager, templates)
 
 protocol = Protocol(websocket_manager, database_manager, templates)
 
+alarm_api = AlarmApi(websocket_manager, database_manager, templates)
+
 plugin_manager = PluginManager(event_queue)
 plugin_manager.load()
 
@@ -87,6 +90,7 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 # Include routers
 app.include_router(dashboard.router)
 app.include_router(protocol.router)
+app.include_router(alarm_api.router)
 
 
 @app.get("/")

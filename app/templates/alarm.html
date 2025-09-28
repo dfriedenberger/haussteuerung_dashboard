@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Haussteuerung - Alarme</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
+    <style>
+        .alarm-list-container {
+            max-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        
+        .alarm-card {
+            margin-bottom: 10px;
+            border-left: 5px solid;
+            transition: all 0.3s ease;
+        }
+        
+        /* Alarm Status Colors */
+        .alarm-aus {
+            border-left-color: #6c757d;
+            background-color: #f8f9fa;
+            color: #6c757d;
+        }
+        
+        .alarm-an.priority-0 {
+            border-left-color: #198754;
+            background-color: #d1e7dd;
+            color: #0f5132;
+        }
+        
+        .alarm-an.priority-1 {
+            border-left-color: #ffc107;
+            background-color: #fff3cd;
+            color: #664d03;
+        }
+        
+        .alarm-an.priority-2 {
+            border-left-color: #fd7e14;
+            background-color: #ffe5d0;
+            color: #843c0c;
+        }
+        
+        .alarm-an.priority-3 {
+            border-left-color: #dc3545;
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .alarm-quittiert.priority-0 {
+            border-left-color: #198754;
+            background-color: #e8f5e8;
+            color: #0f5132;
+            opacity: 0.8;
+        }
+        
+        .alarm-quittiert.priority-1 {
+            border-left-color: #ffc107;
+            background-color: #f8f4e6;
+            color: #664d03;
+            opacity: 0.8;
+        }
+        
+        .alarm-quittiert.priority-2 {
+            border-left-color: #fd7e14;
+            background-color: #f8f0e8;
+            color: #843c0c;
+            opacity: 0.8;
+        }
+        
+        .alarm-quittiert.priority-3 {
+            border-left-color: #dc3545;
+            background-color: #f4e8e8;
+            color: #721c24;
+            opacity: 0.8;
+        }
+        
+        /* Blinking animation for active alarms */
+        .alarm-an {
+            animation: blink 2s infinite;
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.7; }
+        }
+        
+        .alarm-priority-badge {
+            font-size: 0.75rem;
+            padding: 0.25em 0.5em;
+        }
+        
+        .priority-0 .alarm-priority-badge {
+            background-color: #198754;
+        }
+        
+        .priority-1 .alarm-priority-badge {
+            background-color: #ffc107;
+            color: #000;
+        }
+        
+        .priority-2 .alarm-priority-badge {
+            background-color: #fd7e14;
+        }
+        
+        .priority-3 .alarm-priority-badge {
+            background-color: #dc3545;
+        }
+        
+        .alarm-timestamp {
+            font-size: 0.875rem;
+            opacity: 0.8;
+        }
+        
+        .alarm-device {
+            font-weight: 500;
+            font-size: 0.95rem;
+        }
+        
+        .alarm-type {
+            font-style: italic;
+            color: #6c757d;
+        }
+        
+        .alarm-status-icon {
+            font-size: 1.2rem;
+            margin-right: 0.5rem;
+        }
+        
+        .connection-status {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+        }
+        
+        .status-connected {
+            color: #198754;
+        }
+        
+        .status-disconnected {
+            color: #dc3545;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light">
+        <div class="container">
+            <a class="navbar-brand" href="/dashboard">Dashboard</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/dashboard">Übersicht</a>
+                <a class="nav-link" href="/protocol">Protokoll</a>
+                <a class="nav-link active" href="/alarm">Alarme</a>
+            </div>
+        </div>
+    </nav>
+    
+    <!-- Connection Status Indicator -->
+    <div class="connection-status">
+        <span id="connection-indicator" class="badge bg-secondary">
+            <i class="bi bi-wifi-off"></i> Verbindung wird hergestellt...
+        </span>
+    </div>
+    
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h1>
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                Alarm-Übersicht
+            </h1>
+            <div>
+                <span class="badge bg-info" id="alarm-count">0 Alarme</span>
+                <span class="badge bg-secondary" id="last-refresh">Wird geladen...</span>
+                <button class="btn btn-outline-primary btn-sm ms-2" id="refresh-btn">
+                    <i class="bi bi-arrow-clockwise"></i> Aktualisieren
+                </button>
+            </div>
+        </div>
+        
+        <!-- Filter Buttons -->
+        <div class="mb-3">
+            <div class="btn-group" role="group" aria-label="Alarm Filter">
+                <input type="radio" class="btn-check" name="alarm-filter" id="filter-all" value="all" checked>
+                <label class="btn btn-outline-secondary" for="filter-all">
+                    <i class="bi bi-list-ul"></i> Alle
+                </label>
+                
+                <input type="radio" class="btn-check" name="alarm-filter" id="filter-active" value="an">
+                <label class="btn btn-outline-danger" for="filter-active">
+                    <i class="bi bi-exclamation-circle"></i> Aktiv
+                </label>
+                
+                <input type="radio" class="btn-check" name="alarm-filter" id="filter-acknowledged" value="quittiert">
+                <label class="btn btn-outline-warning" for="filter-acknowledged">
+                    <i class="bi bi-check-circle"></i> Quittiert
+                </label>
+                
+                <input type="radio" class="btn-check" name="alarm-filter" id="filter-off" value="aus">
+                <label class="btn btn-outline-secondary" for="filter-off">
+                    <i class="bi bi-circle"></i> Aus
+                </label>
+            </div>
+        </div>
+        
+        <!-- Priority Legend -->
+        <div class="mb-3">
+            <small class="text-muted">Prioritäten:</small>
+            <span class="badge bg-success ms-2">0 - Niedrig</span>
+            <span class="badge bg-warning text-dark ms-1">1 - Mittel</span>
+            <span class="badge bg-orange ms-1" style="background-color: #fd7e14!important;">2 - Hoch</span>
+            <span class="badge bg-danger ms-1">3 - Kritisch</span>
+        </div>
+        
+        <!-- Alarm List -->
+        <div class="alarm-list-container">
+            <div id="alarms-container">
+                <!-- Alarm-Einträge werden hier eingefügt -->
+                <div class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Laden...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Alarme werden geladen...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Handlebars Template für Alarm-Einträge -->
+    <script id="alarm-template" type="text/x-handlebars-template">
+        {% raw %}
+        {{#each alarms}}
+        <div class="card alarm-card alarm-{{status}} priority-{{priority}}" data-alarm-id="{{id}}" data-status="{{status}}" data-priority="{{priority}}">
+            <div class="card-body">
+                <div class="d-flex align-items-start justify-content-between">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-2">
+                            <span class="alarm-status-icon">
+                                {{#if (eq status 'an')}}
+                                    <i class="bi bi-exclamation-triangle-fill"></i>
+                                {{else if (eq status 'quittiert')}}
+                                    <i class="bi bi-check-circle-fill"></i>
+                                {{else}}
+                                    <i class="bi bi-circle"></i>
+                                {{/if}}
+                            </span>
+                            <h6 class="card-title mb-0 alarm-device">{{device_id}}</h6>
+                            <span class="badge alarm-priority-badge ms-2">
+                                Prio {{priority}}
+                            </span>
+                        </div>
+                        
+                        <p class="card-text mb-1">{{message}}</p>
+                        <small class="alarm-type">{{alarm_type}}</small>
+                        
+                        <div class="alarm-timestamp mt-2">
+                            <i class="bi bi-clock"></i>
+                            {{formatDateTime timestamp}}
+                        </div>
+                    </div>
+                    
+                    <div class="ms-3">
+                        {{#if (eq status 'an')}}
+                            <button class="btn btn-sm btn-outline-success" onclick="acknowledgeAlarm({{id}})">
+                                <i class="bi bi-check"></i> Quittieren
+                            </button>
+                        {{/if}}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {{/each}}
+        
+        {{#if (eq alarms.length 0)}}
+        <div class="text-center py-5">
+            <i class="bi bi-check-circle text-success" style="font-size: 3rem;"></i>
+            <h5 class="mt-3 text-muted">Keine Alarme vorhanden</h5>
+            <p class="text-muted">Alle Systeme funktionieren ordnungsgemäß.</p>
+        </div>
+        {{/if}}
+        {% endraw %}
+    </script>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.8/handlebars.min.js"></script>
+    <script src="/static/js/alarm.js"></script>
+    
+</body>
+</html>

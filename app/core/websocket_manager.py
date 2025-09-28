@@ -11,6 +11,7 @@ class WebSocketManager:
         # Separate connections for different types
         self.protocol_connections: List[WebSocket] = []
         self.dashboard_connections: List[WebSocket] = []
+        self.alarm_connections: List[WebSocket] = []
 
     async def connect_protocol(self, websocket: WebSocket):
         """Connect a websocket for protocol updates"""
@@ -24,6 +25,12 @@ class WebSocketManager:
         self.dashboard_connections.append(websocket)
         logger.info(f"Dashboard WebSocket connected. Total connections: {len(self.dashboard_connections)}")
 
+    async def connect_alarm(self, websocket: WebSocket):
+        """Connect a websocket for alarm updates"""
+        await websocket.accept()
+        self.alarm_connections.append(websocket)
+        logger.info(f"Alarm WebSocket connected. Total connections: {len(self.alarm_connections)}")
+
     def disconnect_protocol(self, websocket: WebSocket):
         """Disconnect a protocol websocket"""
         if websocket in self.protocol_connections:
@@ -35,6 +42,12 @@ class WebSocketManager:
         if websocket in self.dashboard_connections:
             self.dashboard_connections.remove(websocket)
             logger.info(f"Dashboard WebSocket disconnected. Remaining connections: {len(self.dashboard_connections)}")
+
+    def disconnect_alarm(self, websocket: WebSocket):
+        """Disconnect an alarm websocket"""
+        if websocket in self.alarm_connections:
+            self.alarm_connections.remove(websocket)
+            logger.info(f"Alarm WebSocket disconnected. Remaining connections: {len(self.alarm_connections)}")
 
     async def broadcast_protocol_entry(self, log_entry: Dict):
         """Broadcast a new protocol entry to all connected protocol clients"""
@@ -104,5 +117,36 @@ class WebSocketManager:
         except Exception as e:
             logger.error(f"Error sending initial dashboard data: {e}")
 
+    async def broadcast_alarm_update(self, alarm_data: Dict):
+        """Broadcast a new or updated alarm to all connected alarm clients"""
+        if not self.alarm_connections:
+            return
 
+        message = {
+            "type": "alarm_update",
+            "data": alarm_data
+        }
 
+        # Send to all connections, remove broken ones
+        disconnected = []
+        for connection in self.alarm_connections:
+            try:
+                await connection.send_text(json.dumps(message))
+            except Exception as e:
+                logger.error(f"Error sending alarm message: {e}")
+                disconnected.append(connection)
+
+        # Remove disconnected clients
+        for conn in disconnected:
+            self.disconnect_alarm(conn)
+
+    async def send_initial_alarm_data(self, websocket: WebSocket, alarms_data: List[Dict]):
+        """Send initial alarm data to a newly connected client"""
+        message = {
+            "type": "initial_data",
+            "data": {"alarms": alarms_data}
+        }
+        try:
+            await websocket.send_text(json.dumps(message))
+        except Exception as e:
+            logger.error(f"Error sending initial alarm data: {e}")

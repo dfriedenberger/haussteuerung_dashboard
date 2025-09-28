@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Create sample alarms for testing and demonstration -->
+    <changeSet id="003-insert-sample-alarms" author="system">
+        <comment>Insert sample alarm data for testing</comment>
+        
+        <!-- Critical alarms (priority 3) -->
+        <insert tableName="alarms">
+            <column name="status" value="AN"/>
+            <column name="message" value="Kritischer Temperatursensor-Ausfall in der Heizungsanlage"/>
+            <column name="alarm_type" value="SENSOR_FAILURE"/>
+            <column name="device_id" value="heating_system_01"/>
+            <column name="priority" value="3"/>
+            <column name="timestamp" valueDate="2025-09-25T08:15:30"/>
+        </insert>
+        
+        <insert tableName="alarms">
+            <column name="status" value="AN"/>
+            <column name="message" value="Stromausfall in Sicherheitssystem - Batteriebetrieb aktiv"/>
+            <column name="alarm_type" value="POWER_FAILURE"/>
+            <column name="device_id" value="security_system_main"/>
+            <column name="priority" value="3"/>
+            <column name="timestamp" valueDate="2025-09-25T09:22:15"/>
+        </insert>
+        
+        <!-- High priority alarms (priority 2) -->
+        <insert tableName="alarms">
+            <column name="status" value="AN"/>
+            <column name="message" value="Wasserleakage-Sensor hat Feuchtigkeit erkannt"/>
+            <column name="alarm_type" value="WATER_LEAK"/>
+            <column name="device_id" value="basement_leak_sensor"/>
+            <column name="priority" value="2"/>
+            <column name="timestamp" valueDate="2025-09-25T10:45:22"/>
+        </insert>
+        
+        <insert tableName="alarms">
+            <column name="status" value="QUITTIERT"/>
+            <column name="message" value="Rauchmelder Fehlalarm - bereits überprüft"/>
+            <column name="alarm_type" value="SMOKE_DETECTOR"/>
+            <column name="device_id" value="kitchen_smoke_detector"/>
+            <column name="priority" value="2"/>
+            <column name="timestamp" valueDate="2025-09-25T07:33:45"/>
+        </insert>
+        
+        <!-- Medium priority alarms (priority 1) -->
+        <insert tableName="alarms">
+            <column name="status" value="AN"/>
+            <column name="message" value="Smart Lock Batterie schwach - Austausch erforderlich"/>
+            <column name="alarm_type" value="LOW_BATTERY"/>
+            <column name="device_id" value="front_door_lock"/>
+            <column name="priority" value="1"/>
+            <column name="timestamp" valueDate="2025-09-25T11:12:08"/>
+        </insert>
+        
+        <insert tableName="alarms">
+            <column name="status" value="QUITTIERT"/>
+            <column name="message" value="WLAN-Verbindung zu Gartensensor unterbrochen"/>
+            <column name="alarm_type" value="CONNECTIVITY"/>
+            <column name="device_id" value="garden_weather_station"/>
+            <column name="priority" value="1"/>
+            <column name="timestamp" valueDate="2025-09-25T06:55:12"/>
+        </insert>
+        
+        <!-- Low priority alarms (priority 0) -->
+        <insert tableName="alarms">
+            <column name="status" value="AN"/>
+            <column name="message" value="Routinemäßige Wartung der Lüftungsanlage erforderlich"/>
+            <column name="alarm_type" value="MAINTENANCE"/>
+            <column name="device_id" value="ventilation_system"/>
+            <column name="priority" value="0"/>
+            <column name="timestamp" valueDate="2025-09-25T12:00:00"/>
+        </insert>
+        
+        <insert tableName="alarms">
+            <column name="status" value="AUS"/>
+            <column name="message" value="Software-Update für Smart Home Hub verfügbar"/>
+            <column name="alarm_type" value="UPDATE_AVAILABLE"/>
+            <column name="device_id" value="smart_hub_central"/>
+            <column name="priority" value="0"/>
+            <column name="timestamp" valueDate="2025-09-25T05:30:00"/>
+        </insert>
+        
+        <insert tableName="alarms">
+            <column name="status" value="AUS"/>
+            <column name="message" value="Automatische Beleuchtung Test abgeschlossen"/>
+            <column name="alarm_type" value="SYSTEM_TEST"/>
+            <column name="device_id" value="lighting_controller"/>
+            <column name="priority" value="0"/>
+            <column name="timestamp" valueDate="2025-09-25T03:00:00"/>
+        </insert>
+        
+        <!-- Additional realistic alarms -->
+        <insert tableName="alarms">
+            <column name="status" value="QUITTIERT"/>
+            <column name="message" value="Fenster im Wohnzimmer seit 2 Stunden geöffnet - Heizung reduziert"/>
+            <column name="alarm_type" value="ENERGY_SAVING"/>
+            <column name="device_id" value="living_room_window_sensor"/>
+            <column name="priority" value="1"/>
+            <column name="timestamp" valueDate="2025-09-25T09:45:30"/>
+        </insert>
+        
+        <insert tableName="alarms">
+            <column name="status" value="AN"/>
+            <column name="message" value="Bewegungsmelder im Keller zeigt ungewöhnliche Aktivität"/>
+            <column name="alarm_type" value="MOTION_DETECTED"/>
+            <column name="device_id" value="basement_motion_sensor"/>
+            <column name="priority" value="2"/>
+            <column name="timestamp" valueDate="2025-09-25T11:45:18"/>
+        </insert>
+        
+        <insert tableName="alarms">
+            <column name="status" value="AUS"/>
+            <column name="message" value="Täglicher Systemcheck erfolgreich abgeschlossen"/>
+            <column name="alarm_type" value="SYSTEM_CHECK"/>
+            <column name="device_id" value="system_monitor"/>
+            <column name="priority" value="0"/>
+            <column name="timestamp" valueDate="2025-09-25T01:00:00"/>
+        </insert>
+    </changeSet>
+
+</databaseChangeLog>
