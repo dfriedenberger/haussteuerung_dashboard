@@ -4,17 +4,21 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy import desc
 from models.alarm import Alarm
 import logging
+import json
+import asyncio
+from core.event_type import EventType
 
 logger = logging.getLogger(__name__)
 
 
 class AlarmApi:
-    def __init__(self, websocket_manager, database_manager, templates: Jinja2Templates):
+    def __init__(self, websocket_manager, database_manager, event_queue: asyncio.Queue, templates: Jinja2Templates):
         self.router = APIRouter(prefix="/alarm", tags=["alarm"])
         self.router.add_api_route("/", self.alarm, response_class=HTMLResponse, methods=["GET"])
         self.router.add_api_websocket_route("/ws", self.alarm_websocket)
         self.websocket_manager = websocket_manager
         self.database_manager = database_manager
+        self.event_queue = event_queue
         self.templates = templates
 
     async def alarm(self, request: Request):
@@ -42,7 +46,15 @@ class AlarmApi:
                 try:
                     # Wait for client messages (e.g., ping/pong)
                     data = await websocket.receive_text()
-                    logger.debug(f"Received alarm websocket message: {data}")
+                    logger.info(f"Received alarm websocket message: {data}")
+                    # TODO: Validate Message
+                    # {"type":"acknowledge_alarm","data":{"alarm_id":6}}
+                    message = json.loads(data)
+                    if message.get("type") == "acknowledge_alarm":
+                        alarm_id = message["data"]["alarm_id"]
+                        payload = {"command_type": "acknowledge_alarm", "alarm_id": alarm_id}
+                        await self.event_queue.put((EventType.COMMAND, payload))
+
                 except WebSocketDisconnect:
                     break
 

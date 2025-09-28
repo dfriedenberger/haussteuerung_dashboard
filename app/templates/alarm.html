@@ -20,58 +20,58 @@
         }
         
         /* Alarm Status Colors */
-        .alarm-aus {
+        .alarm-inactive {
             border-left-color: #6c757d;
             background-color: #f8f9fa;
             color: #6c757d;
         }
         
-        .alarm-an.priority-0 {
+        .alarm-active.priority-0 {
             border-left-color: #198754;
             background-color: #d1e7dd;
             color: #0f5132;
         }
         
-        .alarm-an.priority-1 {
+        .alarm-active.priority-1 {
             border-left-color: #ffc107;
             background-color: #fff3cd;
             color: #664d03;
         }
         
-        .alarm-an.priority-2 {
+        .alarm-active.priority-2 {
             border-left-color: #fd7e14;
             background-color: #ffe5d0;
             color: #843c0c;
         }
         
-        .alarm-an.priority-3 {
+        .alarm-active.priority-3 {
             border-left-color: #dc3545;
             background-color: #f8d7da;
             color: #721c24;
         }
         
-        .alarm-quittiert.priority-0 {
+        .alarm-acknowledged.priority-0 {
             border-left-color: #198754;
             background-color: #e8f5e8;
             color: #0f5132;
             opacity: 0.8;
         }
         
-        .alarm-quittiert.priority-1 {
+        .alarm-acknowledged.priority-1 {
             border-left-color: #ffc107;
             background-color: #f8f4e6;
             color: #664d03;
             opacity: 0.8;
         }
         
-        .alarm-quittiert.priority-2 {
+        .alarm-acknowledged.priority-2 {
             border-left-color: #fd7e14;
             background-color: #f8f0e8;
             color: #843c0c;
             opacity: 0.8;
         }
         
-        .alarm-quittiert.priority-3 {
+        .alarm-acknowledged.priority-3 {
             border-left-color: #dc3545;
             background-color: #f4e8e8;
             color: #721c24;
@@ -79,7 +79,7 @@
         }
         
         /* Blinking animation for active alarms */
-        .alarm-an {
+        .alarm-active:not(.alarm-acknowledged) {
             animation: blink 2s infinite;
         }
         
@@ -188,19 +188,19 @@
                     <i class="bi bi-list-ul"></i> Alle
                 </label>
                 
-                <input type="radio" class="btn-check" name="alarm-filter" id="filter-active" value="an">
+                <input type="radio" class="btn-check" name="alarm-filter" id="filter-active" value="active">
                 <label class="btn btn-outline-danger" for="filter-active">
                     <i class="bi bi-exclamation-circle"></i> Aktiv
                 </label>
                 
-                <input type="radio" class="btn-check" name="alarm-filter" id="filter-acknowledged" value="quittiert">
+                <input type="radio" class="btn-check" name="alarm-filter" id="filter-acknowledged" value="acknowledged">
                 <label class="btn btn-outline-warning" for="filter-acknowledged">
                     <i class="bi bi-check-circle"></i> Quittiert
                 </label>
                 
-                <input type="radio" class="btn-check" name="alarm-filter" id="filter-off" value="aus">
-                <label class="btn btn-outline-secondary" for="filter-off">
-                    <i class="bi bi-circle"></i> Aus
+                <input type="radio" class="btn-check" name="alarm-filter" id="filter-inactive" value="inactive">
+                <label class="btn btn-outline-secondary" for="filter-inactive">
+                    <i class="bi bi-circle"></i> Inaktiv
                 </label>
             </div>
         </div>
@@ -232,16 +232,22 @@
     <script id="alarm-template" type="text/x-handlebars-template">
         {% raw %}
         {{#each alarms}}
-        <div class="card alarm-card alarm-{{status}} priority-{{priority}}" data-alarm-id="{{id}}" data-status="{{status}}" data-priority="{{priority}}">
+        <div class="card alarm-card {{#if active}}alarm-active{{else}}alarm-inactive{{/if}} {{#if acknowledged}}alarm-acknowledged{{/if}} priority-{{priority}}" 
+             data-alarm-id="{{id}}" 
+             data-active="{{active}}" 
+             data-acknowledged="{{acknowledged}}" 
+             data-priority="{{priority}}">
             <div class="card-body">
                 <div class="d-flex align-items-start justify-content-between">
                     <div class="flex-grow-1">
                         <div class="d-flex align-items-center mb-2">
                             <span class="alarm-status-icon">
-                                {{#if (eq status 'an')}}
-                                    <i class="bi bi-exclamation-triangle-fill"></i>
-                                {{else if (eq status 'quittiert')}}
-                                    <i class="bi bi-check-circle-fill"></i>
+                                {{#if active}}
+                                    {{#if acknowledged}}
+                                        <i class="bi bi-check-circle-fill"></i>
+                                    {{else}}
+                                        <i class="bi bi-exclamation-triangle-fill"></i>
+                                    {{/if}}
                                 {{else}}
                                     <i class="bi bi-circle"></i>
                                 {{/if}}
@@ -250,6 +256,9 @@
                             <span class="badge alarm-priority-badge ms-2">
                                 Prio {{priority}}
                             </span>
+                            {{#if acknowledged}}
+                                <span class="badge bg-success ms-1">Quittiert</span>
+                            {{/if}}
                         </div>
                         
                         <p class="card-text mb-1">{{message}}</p>
@@ -262,8 +271,8 @@
                     </div>
                     
                     <div class="ms-3">
-                        {{#if (eq status 'an')}}
-                            <button class="btn btn-sm btn-outline-success" onclick="acknowledgeAlarm({{id}})">
+                        {{#if (and active (not acknowledged))}}
+                            <button class="btn btn-sm btn-outline-success acknowledge-alarm" data-alarm-id="{{id}}">
                                 <i class="bi bi-check"></i> Quittieren
                             </button>
                         {{/if}}

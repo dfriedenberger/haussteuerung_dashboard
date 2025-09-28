@@ -1,11 +1,14 @@
 import asyncio
 import logging
 
+from sqlalchemy import desc
+
+from models.alarm import Alarm
 from core.crud import get_current_values
-from core.websocket_manager import WebSocketManager 
+from core.websocket_manager import WebSocketManager
 from core.database_manager import DatabaseManager
 from core.event_type import EventType
-from plugins.plugin_manager import PluginManager    
+from plugins.plugin_manager import PluginManager
 from models.log import Log
 from models.value import Value
 
@@ -58,6 +61,62 @@ class EventManager:
                     latest_values = get_current_values(db)
                     update_data = [value_entry.to_json() for value_entry in latest_values]
                     await self.websocket_manager.broadcast_dashboard_values(update_data)
+
+            elif event == EventType.ALARM:
+                new_alarm = Alarm.from_dict(payload)
+                with self.database_manager.session_scope() as db:
+                    # Prüfen, ob es schon einen Alarm mit gleicher device_id + alarm_typ gibt
+                    existing_alarm = (
+                        db.query(Alarm)
+                        .filter(
+                            Alarm.device_id == new_alarm.device_id,
+                            Alarm.alarm_type == new_alarm.alarm_type
+                        )
+                        .one_or_none()
+                    )
+
+                    if existing_alarm:
+                        # vorhandenen Eintrag aktualisieren
+                        for key, value in payload.items():
+                            setattr(existing_alarm, key, value)
+                        logger.info(f"Updated alarm: {existing_alarm.to_json()}")
+                    else:
+                        # neuen Eintrag speichern
+                        db.add(new_alarm)
+                        logger.info(f"Inserted new alarm: {new_alarm.to_json()}")
+
+                with self.database_manager.session_scope() as db:
+                    update_alarms = (db.query(Alarm)
+                                     .order_by(desc(Alarm.priority), desc(Alarm.timestamp))
+                                     .limit(100)
+                                     .all())
+                    update_data = [alarm.to_json() for alarm in update_alarms]
+                    await self.websocket_manager.broadcast_alarm_update(update_data)
+
+            elif event == EventType.COMMAND:
+                logger.info(f"Processing command: {payload}")
+                # Hier können wir Befehle verarbeiten, z.B. Alarme bestätigen
+                # Bspw. payload = {"command_type": "acknowledge_alarm", "alarm_id": 6}
+                # Wir leiten den Befehl an die Plugins weiter
+                command_type = payload.get("command_type")
+                if command_type == "acknowledge_alarm": 
+                    alarm_id = payload.get("alarm_id")
+                    logger.info(f"Acknowledging alarm with ID: {alarm_id}")
+                    # Hier könnten wir den Alarm in der DB als bestätigt markieren
+                    with self.database_manager.session_scope() as db:
+                        alarm = db.query(Alarm).filter_by(id=alarm_id).first()
+                        if alarm:
+                            alarm.acknowledged = True
+                            db.add(alarm)
+                        else:
+                            logger.warning(f"Alarm with ID {alarm_id} not found")
+                    with self.database_manager.session_scope() as db:
+                        update_alarms = (db.query(Alarm)
+                                         .order_by(desc(Alarm.priority), desc(Alarm.timestamp))
+                                         .limit(100)
+                                         .all())
+                        update_data = [alarm.to_json() for alarm in update_alarms]
+                        await self.websocket_manager.broadcast_alarm_update(update_data)
 
             # redirect to Plugins (synchron)
             await self.plugin_manager.trigger(event, payload)

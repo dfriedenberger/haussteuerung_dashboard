@@ -63,7 +63,7 @@ class AlarmWebSocket {
                 this.renderAlarms(message.data.alarms);
                 break;
             case 'alarm_update':
-                this.updateAlarm(message.data);
+                this.renderAlarms(message.data.alarms);
                 break;
             default:
                 console.log('Unknown message type:', message.type);
@@ -95,14 +95,19 @@ class AlarmWebSocket {
     }
     
     renderAlarms(alarms) {
-        const container = document.getElementById('alarms-container');
+        
         const template = Handlebars.compile(document.getElementById('alarm-template').innerHTML);
         
-        // Sort alarms: active first, then by priority (high to low), then by timestamp
+        // Sort alarms: active unacknowledged first, then by priority (high to low), then by timestamp
         const sortedAlarms = alarms.sort((a, b) => {
-            // Status priority: an > quittiert > aus
-            const statusPriority = { an: 3, quittiert: 2, aus: 1 };
-            const statusDiff = statusPriority[b.status] - statusPriority[a.status];
+            // Status priority: active+unacknowledged > active+acknowledged > inactive
+            const getStatusPriority = (alarm) => {
+                if (alarm.active && !alarm.acknowledged) return 3; // Active, not acknowledged
+                if (alarm.active && alarm.acknowledged) return 2;   // Active, acknowledged
+                return 1; // Inactive
+            };
+            
+            const statusDiff = getStatusPriority(b) - getStatusPriority(a);
             if (statusDiff !== 0) return statusDiff;
             
             // Then by priority (high to low)
@@ -113,8 +118,22 @@ class AlarmWebSocket {
             return new Date(b.timestamp) - new Date(a.timestamp);
         });
         
-        container.innerHTML = template({ alarms: sortedAlarms });
+
+        $('#alarms-container').html(template({ alarms: sortedAlarms }));
         
+        const ws = this
+        $(".acknowledge-alarm").on("click", function(ev) {
+            ev.preventDefault();
+            const alarmId = $(this).data("alarm-id");
+            // send message via websocket
+            const message = { type: 'acknowledge_alarm', data: { alarm_id: alarmId } };
+
+            if (ws.isConnected) {
+                ws.socket.send(JSON.stringify(message));
+            }
+        });
+
+
         // Update alarm count
         this.updateAlarmCount(alarms);
         
@@ -122,15 +141,10 @@ class AlarmWebSocket {
         this.applyFilter();
     }
     
-    updateAlarm(alarmData) {
-        // For now, refresh all alarms - in a real implementation, 
-        // we would update just the specific alarm
-        console.log('Alarm updated:', alarmData);
-        // This would typically trigger a refresh or update the specific alarm element
-    }
+
     
     updateAlarmCount(alarms) {
-        const activeAlarms = alarms.filter(alarm => alarm.status === 'an').length;
+        const activeAlarms = alarms.filter(alarm => alarm.active && !alarm.acknowledged).length;
         const totalAlarms = alarms.length;
         
         const countElement = document.getElementById('alarm-count');
@@ -156,9 +170,27 @@ class AlarmWebSocket {
         let visibleCount = 0;
         
         alarmCards.forEach(card => {
-            const status = card.dataset.status;
+            const active = card.dataset.active === 'true';
+            const acknowledged = card.dataset.acknowledged === 'true';
             
-            if (selectedFilter === 'all' || status === selectedFilter) {
+            let showCard = false;
+            
+            switch (selectedFilter) {
+                case 'all':
+                    showCard = true;
+                    break;
+                case 'active':
+                    showCard = active && !acknowledged;
+                    break;
+                case 'acknowledged':
+                    showCard = acknowledged;
+                    break;
+                case 'inactive':
+                    showCard = !active;
+                    break;
+            }
+            
+            if (showCard) {
                 card.style.display = 'block';
                 visibleCount++;
             } else {
@@ -185,6 +217,14 @@ Handlebars.registerHelper('eq', function(a, b) {
     return a === b;
 });
 
+Handlebars.registerHelper('and', function(a, b) {
+    return a && b;
+});
+
+Handlebars.registerHelper('not', function(a) {
+    return !a;
+});
+
 Handlebars.registerHelper('formatDateTime', function(timestamp) {
     const date = new Date(timestamp);
     return date.toLocaleString('de-DE', {
@@ -197,34 +237,6 @@ Handlebars.registerHelper('formatDateTime', function(timestamp) {
     });
 });
 
-// Global function for acknowledging alarms
-function acknowledgeAlarm(alarmId) {
-    // This would send a request to acknowledge the alarm
-    console.log('Acknowledging alarm:', alarmId);
-    
-    // Show confirmation
-    if (confirm('Möchten Sie diesen Alarm wirklich quittieren?')) {
-        // Here you would send an API request to acknowledge the alarm
-        // For now, we'll just show a notification
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'alert alert-success alert-dismissible fade show position-fixed';
-        alertDiv.style.top = '70px';
-        alertDiv.style.right = '20px';
-        alertDiv.style.zIndex = '1050';
-        alertDiv.innerHTML = `
-            Alarm #${alarmId} wurde quittiert.
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
-        document.body.appendChild(alertDiv);
-        
-        // Remove alert after 3 seconds
-        setTimeout(() => {
-            if (alertDiv.parentNode) {
-                alertDiv.parentNode.removeChild(alertDiv);
-            }
-        }, 3000);
-    }
-}
 
 // Initialize when DOM is loaded
 document.addEventListener('DOMContentLoaded', function() {
@@ -238,6 +250,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
     
+
     // Refresh button
     document.getElementById('refresh-btn').addEventListener('click', function() {
         const button = this;

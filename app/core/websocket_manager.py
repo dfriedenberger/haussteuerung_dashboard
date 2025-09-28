@@ -117,14 +117,14 @@ class WebSocketManager:
         except Exception as e:
             logger.error(f"Error sending initial dashboard data: {e}")
 
-    async def broadcast_alarm_update(self, alarm_data: Dict):
-        """Broadcast a new or updated alarm to all connected alarm clients"""
+    async def broadcast_alarm_update(self, alarms_data: List[Dict]):
+        """Broadcast new or updated alarm data to all connected alarm clients"""
         if not self.alarm_connections:
             return
 
         message = {
             "type": "alarm_update",
-            "data": alarm_data
+            "data": {"alarms": alarms_data}
         }
 
         # Send to all connections, remove broken ones

@@ -54,7 +54,7 @@ dashboard = Dashboard(websocket_manager, database_manager, templates)
 
 protocol = Protocol(websocket_manager, database_manager, templates)
 
-alarm_api = AlarmApi(websocket_manager, database_manager, templates)
+alarm_api = AlarmApi(websocket_manager, database_manager, event_queue, templates)
 
 plugin_manager = PluginManager(event_queue)
 plugin_manager.load()

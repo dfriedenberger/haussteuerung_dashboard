@@ -36,7 +36,17 @@ class Simulator(Plugin):
             }
             await self._manager.put_event(EventType.VALUE, value_payload)
             
-            await self._manager.put_event(EventType.VALUE, value_payload)
-
             # Update simulated value for next cycle
             self._simulated_value += 0.1
+
+            # Simulate alarm
+            alarm_payload = {
+                "active": True,
+                "acknowledged": False,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "message": f"Simulated alarm: Temperature reached {self._simulated_value:.1f}°C",
+                "alarm_type": "TemperatureThreshold",
+                "device_id": "simulated_device_1",
+                "priority": 2  # Medium priority
+            }
+            await self._manager.put_event(EventType.ALARM, alarm_payload)
