@@ -16,6 +16,10 @@ from core.event_manager import EventManager
 from core.websocket_manager import WebSocketManager
 from core.cycle_manager import CycleManager
 from plugins.plugin_manager import PluginManager
+from core.log_handler import LogHandler
+from core.alarm_handler import AlarmHandler
+from core.value_handler import ValueHandler
+from core.event_type import EventType
 
 
 def setup_logging(level=logging.INFO):
@@ -56,6 +60,10 @@ protocol = Protocol(websocket_manager, database_manager, templates)
 
 alarm_api = AlarmApi(websocket_manager, database_manager, event_queue, templates)
 
+log_handler = LogHandler(database_manager, websocket_manager)
+alarm_handler = AlarmHandler(database_manager, websocket_manager)
+value_handler = ValueHandler(event_queue, database_manager, websocket_manager)
+
 plugin_manager = PluginManager(event_queue)
 plugin_manager.load()
 
@@ -66,7 +74,11 @@ async def lifespan(app: FastAPI):
     logger.info("Start cycle manager & event manager task ...")
     stop_event = asyncio.Event()
     cycle_manager = CycleManager(stop_event, event_queue, interval=60)
-    event_manager = EventManager(stop_event, event_queue, websocket_manager, database_manager, plugin_manager)
+    event_manager = EventManager(stop_event, event_queue, plugin_manager)
+    event_manager.register_event_handler([EventType.LOG], log_handler)
+    event_manager.register_event_handler([EventType.ALARM, EventType.ALARM_ACKNOWLEDGE], alarm_handler)
+    event_manager.register_event_handler([EventType.VALUE], value_handler)
+
     cycle_task = asyncio.create_task(cycle_manager.run())
     event_task = asyncio.create_task(event_manager.run())
 

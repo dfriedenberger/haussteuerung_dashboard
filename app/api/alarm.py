@@ -1,8 +1,7 @@
 from fastapi import APIRouter, Request, WebSocket, WebSocketDisconnect
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
-from sqlalchemy import desc
-from models.alarm import Alarm
+from core.crud import read_alarms
 import logging
 import json
 import asyncio
@@ -33,10 +32,7 @@ class AlarmApi:
         try:
             # Send initial data (all alarms sorted by priority and timestamp)
             with self.database_manager.session_scope() as db:
-                initial_alarms = (db.query(Alarm)
-                                  .order_by(desc(Alarm.priority), desc(Alarm.timestamp))
-                                  .limit(100)
-                                  .all())
+                initial_alarms = read_alarms(db)
                 initial_data = [alarm.to_json() for alarm in initial_alarms]
 
                 await self.websocket_manager.send_initial_alarm_data(websocket, initial_data)
@@ -52,8 +48,9 @@ class AlarmApi:
                     message = json.loads(data)
                     if message.get("type") == "acknowledge_alarm":
                         alarm_id = message["data"]["alarm_id"]
-                        payload = {"command_type": "acknowledge_alarm", "alarm_id": alarm_id}
-                        await self.event_queue.put((EventType.COMMAND, payload))
+                        payload = {"alarm_id": alarm_id}
+                        logger.info(f"Putting acknowledge_alarm command into event queue: {payload}")
+                        await self.event_queue.put((EventType.ALARM_ACKNOWLEDGE, payload))
 
                 except WebSocketDisconnect:
                     break

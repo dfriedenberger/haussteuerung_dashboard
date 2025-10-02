@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 
 import logging
 
-from core.crud import get_current_values
+from core.crud import read_current_values
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ class Dashboard:
         try:
             # Send initial data
             with self.database_manager.session_scope() as db:
-                latest_values = get_current_values(db)
+                latest_values = read_current_values(db)
                 initial_data = [value_entry.to_json() for value_entry in latest_values]
                 await self.websocket_manager.send_initial_dashboard_data(websocket, initial_data)
 

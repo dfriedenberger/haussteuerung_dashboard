@@ -8,4 +8,6 @@ class EventType(Enum):
     COMMAND = 3
     LOG = 4
     VALUE = 5
-    ALARM = 6
+    VALUE_CHANGED = 6
+    ALARM = 7
+    ALARM_ACKNOWLEDGE = 8

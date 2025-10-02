@@ -27,9 +27,10 @@ class PluginManager:
     async def trigger(self, event_type, payload):
         for plugin in self.plugins:
             try:
-                await plugin.trigger(event_type, payload)
+                if plugin.can_handle(event_type):
+                    await plugin.trigger(event_type, payload)
             except Exception as e:
                 logger.exception(f"Plugin raised Exception {e}")
-                
+
     async def put_event(self, event_type: EventType, payload: dict):
         await self.queue.put((event_type, payload))
